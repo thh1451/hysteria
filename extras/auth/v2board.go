@@ -70,7 +70,6 @@ func UpdateUsers(url string, interval time.Duration, trafficlogger server.Traffi
 		if trafficlogger != nil {
 			for uuid := range usersMap {
 				if _, exists := newUsersMap[uuid]; !exists {
-					fmt.Println(usersMap[uuid].ID)
 					trafficlogger.NewKick(strconv.Itoa(usersMap[uuid].ID))
 				}
 			}
