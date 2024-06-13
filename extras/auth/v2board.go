@@ -9,7 +9,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/apernet/hysteria/core/server"
+	"github.com/apernet/hysteria/core/server/v2"
 )
 
 var _ server.Authenticator = &V2boardApiProvider{}
