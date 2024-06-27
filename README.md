@@ -8,8 +8,8 @@
 ### 示例配置
 ```
 v2raysocks:
-  apiHost: https://面板地址
-  apiKey: 面板节点密钥
+  apiHost: https://yourdomain.com/modules/addons/v2raysocks_nodes/web_api.php
+  apiKey: v2raysocks_nodes
   nodeID: 节点ID
 tls:
   type: tls
