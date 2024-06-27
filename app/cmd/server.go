@@ -906,7 +906,7 @@ func runServer(cmd *cobra.Command, args []string) {
 		resp, err := http.Get(nodeInfoUrl)
 		if err != nil {
 			// 处理错误
-			fmt.Println("HTTP GET 请求出错:", err)
+			fmt.Println("HTTP GET 请求节点配置出错:", err)
 			logger.Fatal("failed to client v2raysocks api to get nodeInfo", zap.Error(err))
 		}
 		defer resp.Body.Close()
