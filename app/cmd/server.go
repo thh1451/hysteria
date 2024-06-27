@@ -53,7 +53,7 @@ func init() {
 }
 
 type serverConfig struct {
-	V2board               *v2boardConfig              `mapstructure:"v2board"`
+	V2RaySocks            *v2raysocksConfig           `mapstructure:"v2raysocks"`
 	Listen                string                      `mapstructure:"listen"`
 	Obfs                  serverConfigObfs            `mapstructure:"obfs"`
 	TLS                   *serverConfigTLS            `mapstructure:"tls"`
@@ -72,7 +72,7 @@ type serverConfig struct {
 	Masquerade            serverConfigMasquerade      `mapstructure:"masquerade"`
 }
 
-type v2boardConfig struct {
+type v2raysocksConfig struct {
 	ApiHost string `mapstructure:"apiHost"`
 	ApiKey  string `mapstructure:"apiKey"`
 	NodeID  uint   `mapstructure:"nodeID"`
@@ -723,15 +723,15 @@ func (c *serverConfig) fillAuthenticator(hyConfig *server.Config) error {
 		}
 		hyConfig.Authenticator = &auth.CommandAuthenticator{Cmd: c.Auth.Command}
 		return nil
-	case "v2board":
+	case "v2raysocks":
 		// 定时获取用户列表并储存
 		// 判断URL是否存在
-		v2boardConfig := c.V2board
-		if v2boardConfig.ApiHost == "" || v2boardConfig.ApiKey == "" || v2boardConfig.NodeID == 0 {
-			return configError{Field: "auth.v2board", Err: errors.New("v2board config error")}
+		v2raysocksConfig := c.V2RaySocks
+		if v2raysocksConfig.ApiHost == "" || v2raysocksConfig.ApiKey == "" || v2raysocksConfig.NodeID == 0 {
+			return configError{Field: "auth.v2raysocks", Err: errors.New("v2raysocks config error")}
 		}
 		// 创建定时更新用户UUID协程
-		hyConfig.Authenticator = &auth.V2boardApiProvider{URL: fmt.Sprintf("%s?token=%s&node_id=%d&node_type=hysteria", c.V2board.ApiHost+"/api/v1/server/UniProxy/user", c.V2board.ApiKey, c.V2board.NodeID)}
+		hyConfig.Authenticator = &auth.V2RaySocksApiProvider{URL: fmt.Sprintf("%s?token=%s&node_id=%d&nodetype=hysteria2&act=user", c.V2RaySocks.ApiHost, c.V2RaySocks.ApiKey, c.V2RaySocks.NodeID)}
 
 		return nil
 
@@ -750,13 +750,13 @@ func (c *serverConfig) fillTrafficLogger(hyConfig *server.Config) error {
 		tss := trafficlogger.NewTrafficStatsServer(c.TrafficStats.Secret)
 		hyConfig.TrafficLogger = tss
 		// 添加定时更新用户使用流量协程
-		if c.V2board != nil && c.V2board.ApiHost != "" {
-			go auth.UpdateUsers(fmt.Sprintf("%s?token=%s&node_id=%d&node_type=hysteria", c.V2board.ApiHost+"/api/v1/server/UniProxy/user", c.V2board.ApiKey, c.V2board.NodeID), time.Second*5, hyConfig.TrafficLogger)
-			go hyConfig.TrafficLogger.PushTrafficToV2boardInterval(fmt.Sprintf("%s?token=%s&node_id=%d&node_type=hysteria", c.V2board.ApiHost+"/api/v1/server/UniProxy/push", c.V2board.ApiKey, c.V2board.NodeID), time.Second*60)
+		if c.V2RaySocks != nil && c.V2RaySocks.ApiHost != "" {
+			go auth.UpdateUsers(fmt.Sprintf("%s?token=%s&node_id=%d&nodetype=hysteria2&act=user", c.V2RaySocks.ApiHost, c.V2RaySocks.ApiKey, c.V2RaySocks.NodeID), time.Second*5, hyConfig.TrafficLogger)
+			go hyConfig.TrafficLogger.PushTrafficToV2RaySocksInterval(fmt.Sprintf("%s?token=%s&node_id=%d&nodetype=hysteria2&act=submit", c.V2RaySocks.ApiHost, c.V2RaySocks.ApiKey, c.V2RaySocks.NodeID), time.Second*60)
 		}
 		go runTrafficStatsServer(c.TrafficStats.Listen, tss)
 	} else {
-		go auth.UpdateUsers(fmt.Sprintf("%s?token=%s&node_id=%d&node_type=hysteria", c.V2board.ApiHost+"/api/v1/server/UniProxy/user", c.V2board.ApiKey, c.V2board.NodeID), time.Second*5, nil)
+		go auth.UpdateUsers(fmt.Sprintf("%s?token=%s&node_id=%d&nodetype=hysteria2&act=user", c.V2RaySocks.ApiHost, c.V2RaySocks.ApiKey, c.V2RaySocks.NodeID), time.Second*5, nil)
 	}
 	return nil
 }
@@ -890,35 +890,36 @@ func runServer(cmd *cobra.Command, args []string) {
 	if err := viper.Unmarshal(&config); err != nil {
 		logger.Fatal("failed to parse server config", zap.Error(err))
 	}
-	// 如果配置了v2board 则自动获取监听端口、obfs
-	if config.V2board != nil && config.V2board.ApiHost != "" {
+	// 如果配置了v2raysocks 则自动获取监听端口、obfs
+	if config.V2RaySocks != nil && config.V2RaySocks.ApiHost != "" {
 		// 创建一个url.Values来存储查询参数
 		queryParams := url.Values{}
-		queryParams.Add("token", config.V2board.ApiKey)
-		queryParams.Add("node_id", strconv.Itoa(int(config.V2board.NodeID)))
-		queryParams.Add("node_type", "hysteria")
+		queryParams.Add("act", "config")
+		queryParams.Add("token", config.V2RaySocks.ApiKey)
+		queryParams.Add("node_id", strconv.Itoa(int(config.V2RaySocks.NodeID)))
+		queryParams.Add("nodetype", "hysteria2")
 
 		// 创建完整的URL，包括查询参数
-		nodeInfoUrl := config.V2board.ApiHost + "/api/v1/server/UniProxy/config?" + queryParams.Encode()
+		nodeInfoUrl := config.V2RaySocks.ApiHost + "?" + queryParams.Encode()
 
 		// 发起 HTTP GET 请求
 		resp, err := http.Get(nodeInfoUrl)
 		if err != nil {
 			// 处理错误
 			fmt.Println("HTTP GET 请求出错:", err)
-			logger.Fatal("failed to client v2board api to get nodeInfo", zap.Error(err))
+			logger.Fatal("failed to client v2raysocks api to get nodeInfo", zap.Error(err))
 		}
 		defer resp.Body.Close()
 		// 读取响应数据
 		body, err := io.ReadAll(resp.Body)
 		if err != nil {
-			logger.Fatal("failed to read v2board reaponse", zap.Error(err))
+			logger.Fatal("failed to read v2raysocks reaponse", zap.Error(err))
 		}
 		// 解析JSON数据
 		var responseNodeInfo ResponseNodeInfo
 		err = json.Unmarshal(body, &responseNodeInfo)
 		if err != nil {
-			logger.Fatal("failed to unmarshal v2board reaponse", zap.Error(err))
+			logger.Fatal("failed to unmarshal v2raysocks reaponse", zap.Error(err))
 		}
 		// 给 hy的端口、obfs、上行下行进行赋值
 		if responseNodeInfo.ServerPort != 0 {

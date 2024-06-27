@@ -7,7 +7,7 @@ if [ ! -f "$CONFIG_FILE" ]; then
     echo "Creating configuration file $CONFIG_FILE"
     mkdir -p /etc/hysteria
     cat <<EOF >"$CONFIG_FILE"
-v2board:
+v2raysocks:
   apiHost: ${apiHost}
   apiKey: ${apiKey}
   nodeID: ${nodeID}
@@ -16,7 +16,7 @@ acme:
     - ${domain}
   email: your@email.com
 auth:
-  type: v2board
+  type: v2raysocks
 trafficStats:
   listen: 127.0.0.1:7653
 acl:

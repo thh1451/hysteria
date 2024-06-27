@@ -91,9 +91,9 @@ def check_build_env():
     if not check_command(["git", "--version"]):
         print("Git is not installed. Please install Git and try again.")
         return False
-    if not check_command(["git", "rev-parse", "--is-inside-work-tree"]):
-        print("Not in a Git repository. Please go to the project root and try again.")
-        return False
+    #if not check_command(["git", "rev-parse", "--is-inside-work-tree"]):
+    #    print("Not in a Git repository. Please go to the project root and try again.")
+    #    return False
     if not check_command(["go", "version"]):
         print("Go is not installed. Please install Go and try again.")
         return False
